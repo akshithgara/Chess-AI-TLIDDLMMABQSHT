@@ -6,7 +6,7 @@ from joueur.base_ai import BaseAI
 # <<-- Creer-Merge: imports -->> - Code you add between this comment and the end comment will be preserved between Creer re-runs.
 import random
 from math import inf
-from collections import namedtuple
+from collections import namedtuple, defaultdict
 from itertools import count
 from games.chess.state import State
 from games.chess.helper import convert_san, board_index
@@ -43,6 +43,7 @@ class AI(BaseAI):
         """
         # <<-- Creer-Merge: start -->> - Code you add between this comment and the end comment will be preserved between Creer re-runs.
         self.board = fenToState(self.game.fen)
+        self.transposition_table = dict()
         # <<-- /Creer-Merge: start -->>
 
     def game_updated(self) -> None:
@@ -105,12 +106,17 @@ class AI(BaseAI):
     def tlabiddl_minimax(self):
         initial_board = self.board
         l_depth = 0
-        d_l = 3 
+        d_l = 2 
 
         # Timelimiting 
         time_limit = 10 # 10 seconds to find the best move
         start_time = timer()
+        # history stuff
+        history = defaultdict(dict)
 
+        if initial_board.z_hash() in self.transposition_table.keys():
+            return self.transposition_table[initial_board.z_hash()]
+        
         def min_play(board, alpha=(-inf), beta=(inf)):
             if board.depth >= l_depth:
                 return board.value()
@@ -118,7 +124,10 @@ class AI(BaseAI):
             for move in board.generate_moves():
                 next_board = board.move(move)
                 if next_board.check_check(): continue
-                score = max_play(next_board, alpha, beta)
+                if next_board.is_quiescent():
+                    score = quiescence(next_board, alpha, beta)
+                else:
+                    score = max_play(next_board, alpha, beta)
                 if score < best_score:
                     best_move = move
                     best_score = score
@@ -134,6 +143,8 @@ class AI(BaseAI):
             for move in board.generate_moves():
                 next_board = board.move(move)
                 if next_board.check_check(): continue
+                if next_board.is_quiescent():
+                    score = quiescence(next_board, alpha, beta)
                 score = min_play(next_board, alpha, beta)
                 if score > best_score:
                     best_move = move
@@ -143,16 +154,36 @@ class AI(BaseAI):
                 alpha = max(alpha, score)
             return best_score
 
+        def quiescence(board, alpha=(-inf), beta=(inf)):
+            stand_pat = board.value()
+            if stand_pat >= beta:
+                return beta
+            if alpha < stand_pat:
+                alpha = stand_pat
+            for move in board.gen_moves():
+                if (timer() - start_time) >= time_limit:
+                    # if time limit has been reached, give us the best move
+                    return alpha
+                next_board = board.move(move)
+                score = -quiescence(next_board, -beta, -alpha)
+                if score >= beta:
+                    history[initial_board.z_hash()][board.z_hash()] = board.depth * board.depth
+                    return beta
+                if score > alpha:
+                    alpha = score
+            return alpha
+
         while l_depth <= d_l:
             frontier = [initial_board]
             visited = set(initial_board)
             while len(frontier) != 0:
+                frontier = sorted(frontier, key=lambda x: history[initial_board.z_hash()].get(x.z_hash(), 0))
                 board = frontier.pop(0)
                 best_score = -inf
                 for move in board.generate_moves():
                     next_board = board.move(move)
                     if next_board.check_check(): continue
-                    score = min_play(next_board)
+                    score = max_play(next_board)
                     if score > best_score:
                         best_move = move
                         best_score = score
@@ -160,9 +191,11 @@ class AI(BaseAI):
                         visited.add(next_board)
                     if (timer() - start_time) >= time_limit:
                         # If time limit is reached, give us the best move
+                        self.transposition_table[self.board.board] = best_move
                         return best_move
             if len(frontier) == 0:
                 l_depth += 1
+        self.transposition_table[self.board.board] = best_move
         return best_move
             
 

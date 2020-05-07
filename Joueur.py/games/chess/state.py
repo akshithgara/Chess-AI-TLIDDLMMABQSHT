@@ -1,6 +1,8 @@
 from collections import namedtuple
 from itertools import count
-
+from random import getrandbits
+from operator import xor
+import re
 """ 
 A state class that interprets the given fen in the form of a board
 and it's functions generate moves that are valid for a given state.
@@ -30,6 +32,28 @@ piece_values = {
     'Q': 9,
     'K': 200
 }
+
+z_indicies = {
+    'P': 1,
+    'N': 2,
+    'B': 3,
+    'R': 4,
+    'Q': 5,
+    'K': 6,
+    'p': 7,
+    'n': 8,
+    'b': 9,
+    'r': 10,
+    'q': 11,
+    'k': 12
+}
+
+# initialize Zobrist hash table
+z_table = [[None] * 12] * 64
+for i in range(0, 64):
+    for j in range(0, 12):
+        z_table[i][j] = getrandbits(16)
+        
 class State(namedtuple('State', 'board score wc bc ep kp depth captured')):
 
     # Generates all possible moves for a given state
@@ -125,3 +149,16 @@ class State(namedtuple('State', 'board score wc bc ep kp depth captured')):
             if q == 'k':
                 return True
         return False
+
+    def is_quiescent(self):
+        return self.check_check() or self.captured
+    
+    def z_hash(self):
+        # Zobrist Hash of board position
+        # strip all whitespace from board
+        stripboard = re.sub(r'[\s+]', '', self.board)
+        h = 0
+        for i in range(0, 64):
+            j = z_indicies.get(stripboard[i], 0)
+            h = xor(h, z_table[i][j - 1])
+        return h   
