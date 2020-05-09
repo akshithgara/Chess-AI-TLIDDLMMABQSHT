@@ -106,7 +106,7 @@ class AI(BaseAI):
     def tlabiddl_minimax(self):
         initial_board = self.board
         l_depth = 0
-        d_l = 2 
+        d_l = 3 
 
         # Timelimiting 
         time_limit = 10 # 10 seconds to find the best move
