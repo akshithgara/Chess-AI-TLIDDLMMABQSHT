@@ -1,6 +1,6 @@
 # This is where you build your AI for the Chess game.
 # Author: Akshith Gara
-# Chess AI Implementation Assignment 1
+# Chess AI Implementation Assignment 4
 from joueur.base_ai import BaseAI
 
 # <<-- Creer-Merge: imports -->> - Code you add between this comment and the end comment will be preserved between Creer re-runs.
@@ -102,7 +102,7 @@ class AI(BaseAI):
     def update_board(self): 
         self.board = fenToState(self.game.fen)
 
-    #Implementation of Time Limited Iterative deepening depth limited minimax
+    #Implementation of Time Limited Iterative deepening depth limited minimax with Alpha-Beta Pruning, Quiescent Search and History Table
     def tlabiddl_minimax(self):
         initial_board = self.board
         l_depth = 0
